@@ -1,0 +1,122 @@
+RIKKEISTORE - QUẢN LÝ GIỎ HÀNG & LOGGING CƠ BẢN
+Đảm bảo dữ liệu đầu vào chuẩn xác và mọi thao tác (thành công hay thất bại) đều phải được ghi log ra Console bằng @Slf4j để phục vụ truy vết.
+
+Dependency:
+SpringWeb
+Lombok
+Validation
+MySqlDriver
+SpringDataJpa
+
+Entity: CartItem
+Long id
+String userId
+String productId
+Interger quantity
+
+Service:
+Thêm sản phẩm:
+	Nếu > 0 -> Thêm mới (log.info())-> return cartItem
+	Nếu đã có productId & userId -> quantity +
+	(log.info()) -> return cartItem
+Ghi log thông tin mỗi khi có request tới và kết quả xử lý.
+
+Tiếp tục triển khai CRUD ->
+POST /api/cart/add
+GET /api/cart/{userId}
+
+Repository: Spring Data JPA
+findByUserId()
+findByProductIdAndUserId()
+
+Validation: @NotNull, @NotBlank, @Min(1) tại DTO
+
+DTO:
+-> class RequestCartItem{
+userId
+productId
+@Min
+quantity}
+
+-> class ResponseCartItem{}
+
+Logging: Dùng @Slf4j và Parameterized Logging ({}). Cấm dùng dấu + nối chuỗi. -> Trong Service, Controller
+log.info() -> Log thông tin
+log.warn() -> Log cảnh báo
+
+Controller: 2 API (POST @Valid @ResponseBody, GET)
+
+Bẫy dữ liệu: Xử lý kịch bản user gửi productId là chuỗi rỗng ("") hoặc quantity = 0. Ghi log lại các hành vi bất thường này.
+
+Tạo package Exception -> create class GlobalException
+-> HandleException(Exception exception ... hoặc Exception khác muốn xuất lỗi)
+-> log lỗi bên trong -> log message
+
+RIKKEISTORE - THANH TOÁN & PHÂN LOẠI LOG LEVELS
+Ghi log ra Console bằng @Slf4j
+
+Dependency:
+SpringWeb
+Lombok
+Validation
+MySqlDriver
+SpringDataJpa
+
+Entity:
+class User{
+Long id
+String username
+String email
+}
+
+class UserAccount{
+Long id
+User user
+Double balance
+}
+
+class Order{
+Long id
+User user
+Double totalAmount
+String status (PENDING , PAID)
+}
+
+RelationShip:
+User - UserAccount (1 - 1) -> @OneToOne
+User - Order (1 - n) -> User - @ManyToOne
+
+DTO: Có Vaidate
+Create Account: {userId, balance}
+Create Order: {userId, totalAmount}
+Payment and Update: {orderId, userId, amount}
+
+Service (Business Logic):
+	Nếu chưa có tài khoản người dùng (account) -> tạo mới CreateAccount
+	Tạo đơn hàng (Create Order) chưa thanh toán:
+		Đặt Status = Pending;
+		-> Save()
+	Thanh toán đơn hàng (payment):
+		Kiểm tra user đặt hàng -> đúng -> thanh toán
+		Check Status:
+			+ Pending -> Cho thanh toán (Xử lý logic trừ tiền tài khoản và cập nhật trạng thái đơn hàng) -> (Xử lý trừ tiền và cập nhật đơn hàng) -> Status = Paid
+			+ Paid: -> Đã thanh toán không cần thanh toán
+
+Repository:
+interface UserRepository extend JpaRepository<User, Long>
+interface UserAccountRepository extend JpaRepository<UserAccount, Long>
+interface OrderRepository extend JpaRepository<Order, Long>
+
+Controller:
+CreateUserAccount() -> gọi đến service xử lý thêm account
+CreateOrder() -> gọi đến service xử lý thêm order
+CreatePayment() -> gọi đến service xử lý trừ tiền và cập nhật đơn hàng || cập nhật trạng thái
+
+Logging:
+Áp dùng try-catch -> Layer Service -> gắn log
+log.info() -> Log ra các thông tin khi thêm, cập nhật
+log.warn() -> Log các cảnh báo
+log.error(Exception..., exception) -> log ra các lỗi exception
+Xử lý: Giả lập một lỗi ném ra RuntimeException("Đứt kết nối DB") khi amount = 9999 để test xem log ERROR có in ra đủ Stack Trace không.
+
+Transaction: Dùng Annotation @Transaction (trừ tiền, cập nhật đơn hàng)
